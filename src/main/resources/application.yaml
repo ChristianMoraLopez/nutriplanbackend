@@ -1,0 +1,24 @@
+jwt:
+  secret: "" # Cambia esto
+  issuer: "nutriplan-api"
+  audience: "nutriplan-users"
+  realm: "NutriPlan App"
+
+database:
+  url: "jdbc:postgresql://us-east-1.6ee52f41-94b3-4ae4-bebf-d70946d7508e.aws.yugabyte.cloud:5433/yugabyte?ssl=true&sslmode=verify-full&sslrootcert=classpath:root.crt"
+  user: "christian"
+  password: "4682Oscuridad"
+  driver: "org.postgresql.Driver"
+  connectionPool:
+    maxPoolSize: 10
+    idleTimeout: 10000
+
+ktor:
+  deployment:
+    port: 8080
+    watch:
+      - classes
+      - resources
+  application:
+    modules:
+      - com.christian.nutriplan.ApplicationKt.module
