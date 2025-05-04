@@ -12,6 +12,10 @@ import com.auth0.jwt.algorithms.Algorithm
 import com.christian.nutriplan.models.*
 import com.christian.nutriplan.services.UsuarioService
 import com.christian.nutriplan.models.responses.ApiResponse
+import com.christian.nutriplan.models.responses.ApiResponse.LoginResponse
+import org.slf4j.LoggerFactory
+import java.util.Date
+
 
 /**
  * Configuración de seguridad para la aplicación NutriPlan
@@ -22,7 +26,7 @@ fun Application.configureSecurity(usuarioService: UsuarioService) {
     val jwtIssuer = environment.config.property("jwt.issuer").getString()
     val jwtAudience = environment.config.property("jwt.audience").getString()
     val jwtRealm = environment.config.property("jwt.realm").getString()
-
+    val logger = LoggerFactory.getLogger("SecurityConfig")
     // Configuración de autenticación JWT
     install(Authentication) {
         jwt("auth-jwt") {
@@ -35,15 +39,21 @@ fun Application.configureSecurity(usuarioService: UsuarioService) {
                     .build()
             )
             validate { credential ->
-                // Validar que el ID de usuario en el token existe en la base de datos
                 val usuarioId = credential.payload.getClaim("userId").asInt()
-                if (usuarioId != 0 && usuarioService.read(usuarioId) != null) {
-                    JWTPrincipal(credential.payload)
-                } else {
+                logger.info("Validando token para usuario ID: $usuarioId")
+                try {
+                    val principal = JWTPrincipal(credential.payload)
+                    if (usuarioService.read(usuarioId) == null) {
+                        logger.warn("Usuario $usuarioId no existe en BD pero token es válido")
+                    }
+                    principal
+                } catch (e: Exception) {
+                    logger.error("Error validando token: ${e.message}")
                     null
                 }
             }
             challenge { _, _ ->
+                logger.warn("Fallo de autenticación JWT")
                 call.respond(HttpStatusCode.Unauthorized, ApiResponse.Error(
                     message = "Acceso no autorizado",
                     error = "Token inválido o expirado"
@@ -57,42 +67,40 @@ fun Application.configureSecurity(usuarioService: UsuarioService) {
         post("/login") {
             try {
                 val credentials = call.receive<Credentials>()
-                val usuario = usuarioService.login(credentials.email, credentials.password)
+                val usuario = usuarioService.login(credentials.email, credentials.contrasena)
+                    ?: return@post call.respond(HttpStatusCode.Unauthorized,
+                        ApiResponse.Error("Unauthorized", "Invalid credentials"))
 
-                if (usuario != null) {
-                    // Crear token JWT
-                    val token = JWT.create()
-                        .withAudience(jwtAudience)
-                        .withIssuer(jwtIssuer)
-                        .withClaim("userId", usuario.usuarioId)
-                        .withClaim("email", usuario.email)
-                        .withClaim("rol", usuario.rol)
-                        .withExpiresAt(java.util.Date(System.currentTimeMillis() + 3600000)) // 1 hora
-                        .sign(Algorithm.HMAC256(jwtSecret))
+                val token = JWT.create()
+                    .withAudience(jwtAudience)
+                    .withIssuer(jwtIssuer)
+                    .withClaim("userId", usuario.usuarioId)
+                    .withClaim("email", usuario.email)
+                    .withClaim("rol", usuario.rol)
+                    .withExpiresAt(Date(System.currentTimeMillis() + 3600000)) // 1 hour
+                    .sign(Algorithm.HMAC256(jwtSecret))
 
-                    call.respond(ApiResponse.Success(
-                        data = mapOf("token" to token, "usuario" to usuario),
-                        message = "Inicio de sesión exitoso"
-                    ))
-                } else {
-                    call.respond(
-                        HttpStatusCode.Unauthorized,
-                        ApiResponse.Error(
-                            message = "Credenciales inválidas",
-                            error = "El email o la contraseña son incorrectos"
-                        )
+                call.respond(HttpStatusCode.OK,
+                    ApiResponse.Success(
+                        data = LoginResponse(
+                            token = token,
+                            usuario = usuario.copy(contrasena = "")
+                        ),
+                        message = "Login successful"
                     )
-                }
+                )
             } catch (e: Exception) {
-                call.respond(
-                    HttpStatusCode.InternalServerError,
+                call.respond(HttpStatusCode.InternalServerError,
                     ApiResponse.Error(
-                        message = "Error al procesar el inicio de sesión",
-                        error = e.message
+                        message = "Login failed",
+                        error = e.message ?: "Unknown error"
                     )
                 )
             }
         }
+
+
+
 
         post("/registro") {
             try {

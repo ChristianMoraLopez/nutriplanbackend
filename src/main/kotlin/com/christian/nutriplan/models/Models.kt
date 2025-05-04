@@ -7,6 +7,7 @@ import org.jetbrains.exposed.dao.id.IdTable
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.javatime.datetime
 import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 /**
  * Data models and database tables for NutriPlan nutritional planning system
@@ -15,7 +16,7 @@ import java.time.LocalDateTime
 // User models
 @Serializable
 data class Usuario(
-    val usuarioId: Int? = null,  // Cambio aquí: usa Int en lugar de EntityID
+    val usuarioId: Int? = null,
     val nombre: String,
     val email: String,
     val contrasena: String,
@@ -24,6 +25,7 @@ data class Usuario(
     @Contextual
     val fechaRegistro: String = LocalDateTime.now().toString()
 )
+
 @Serializable
 data class UsuarioResponse(
     val usuarioId: Int,
@@ -38,7 +40,7 @@ data class UsuarioResponse(
 @Serializable
 data class Credentials(
     val email: String,
-    val password: String
+    val contrasena: String
 )
 
 // Nutrition models
@@ -69,11 +71,22 @@ data class Comida(
     val nombre: String
 )
 
+
+
 @Serializable
 data class Objetivo(
     val objetivoId: Int? = null,
     val nombre: String,
-    val tieneTiempo: Boolean
+    val tieneTiempo: Boolean,
+    @Contextual
+    val fechaCreacion: String? = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
+    val usuarioId: Int? = null
+)
+
+@Serializable
+data class ErrorResponse(
+    val message: String,
+    val error: String
 )
 
 // Menu planning models
@@ -81,7 +94,7 @@ data class Objetivo(
 data class Menu(
     val menuId: Int? = null,
     val usuarioId: Int,
-    val objetivoId: Int,
+    @Contextual val objetivoId: EntityID<Int>,
     val comidaId: Int,
     @Contextual
     val fechaCreacion: String? = LocalDateTime.now().toString(),
@@ -114,16 +127,16 @@ object CategoriasIngredientes : Table("categorias_ingredientes") {
     val categoriaId = integer("categoria_id").autoIncrement()
     val nombre = varchar("nombre", length = 50).uniqueIndex()
 
-    override val primaryKey = PrimaryKey(categoriaId)
+    override val primaryKey = PrimaryKey(categoriaId, name = "PK_Categoria_ID")
 }
 
 object Ingredientes : Table("ingredientes") {
     val ingredienteId = integer("ingrediente_id").autoIncrement()
     val nombre = varchar("nombre", length = 100)
     val categoriaId = integer("categoria_id") references CategoriasIngredientes.categoriaId
-    val calorias = decimal("calorias", precision = 10, scale = 2).nullable()
+    val calorias = double("calorias").nullable()
 
-    override val primaryKey = PrimaryKey(ingredienteId)
+    override val primaryKey = PrimaryKey(ingredienteId, name = "PK_Ingrediente_ID")
 }
 
 object MetodosPreparacion : Table("metodos_preparacion") {
@@ -131,29 +144,33 @@ object MetodosPreparacion : Table("metodos_preparacion") {
     val nombre = varchar("nombre", length = 100)
     val descripcion = text("descripcion").nullable()
 
-    override val primaryKey = PrimaryKey(metodoId)
+    override val primaryKey = PrimaryKey(metodoId, name = "PK_Metodo_ID")
 }
 
 object Comidas : Table("comidas") {
     val comidaId = integer("comida_id").autoIncrement()
     val nombre = varchar("nombre", length = 50).uniqueIndex()
 
-    override val primaryKey = PrimaryKey(comidaId)
+    override val primaryKey = PrimaryKey(comidaId, name = "PK_Comida_ID")
 }
 
-object Objetivos : Table("objetivos") {
-    val objetivoId = integer("objetivo_id").autoIncrement()
-    val nombre = varchar("nombre", length = 100)
-    val tieneTiempo = bool("tiene_tiempo")
 
-    override val primaryKey = PrimaryKey(objetivoId)
+
+object Objetivos : IdTable<Int>("objetivos") {
+    override val id: Column<EntityID<Int>> = integer("objetivo_id").autoIncrement().entityId()
+    val nombre = varchar("nombre", length = 100)
+    val tieneTiempo = bool("tiene_tiempo").default(false)
+    val fechaCreacion = datetime("fecha_creacion").clientDefault { LocalDateTime.now() }
+    val usuarioId = integer("usuario_id").references(Usuarios.id).nullable()
+
+    override val primaryKey = PrimaryKey(id, name = "PK_Objetivo_ID")
 }
 
 object Menus : Table("menus") {
     val menuId = integer("menu_id").autoIncrement()
     val usuarioId = reference("usuario_id", Usuarios) // <-- Cambiado aquí
 
-    val objetivoId = integer("objetivo_id").references(Objetivos.objetivoId)
+    val objetivoId = reference("objetivo_id", Objetivos)
     val comidaId = integer("comida_id").references(Comidas.comidaId)
     val fechaCreacion = datetime("fecha_creacion").clientDefault { LocalDateTime.now() }
     val metodoId = integer("metodo_id").references(MetodosPreparacion.metodoId).nullable()
@@ -167,7 +184,7 @@ object SeleccionIngredientes : Table("seleccion_ingredientes") {
     val ingredienteId = integer("ingrediente_id") references Ingredientes.ingredienteId
     val cantidad = decimal("cantidad", precision = 10, scale = 2).nullable()
 
-    override val primaryKey = PrimaryKey(seleccionId)
+    override val primaryKey = PrimaryKey(seleccionId, name = "PK_Seleccion_ID")
 }
 
 // Current timestamp helper

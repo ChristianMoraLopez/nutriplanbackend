@@ -1,5 +1,5 @@
 jwt:
-  secret: "" # Cambia esto
+  secret: "1234567489"
   issuer: "nutriplan-api"
   audience: "nutriplan-users"
   realm: "NutriPlan App"

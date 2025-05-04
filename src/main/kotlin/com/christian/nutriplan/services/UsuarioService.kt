@@ -69,18 +69,30 @@ class UsuarioService(private val database: Database) {
     }
 
     fun login(email: String, password: String): Usuario? = transaction(database) {
-        Usuarios.select((Usuarios.email eq email) and (Usuarios.contrasena eq password))
-            .map {
+        addLogger(StdOutSqlLogger)
+        // Fetch the user by email
+        val user = Usuarios.selectAll().where { Usuarios.email eq email }
+            .singleOrNull()
+            ?.let {
                 Usuario(
-                    usuarioId = it[Usuarios.id].value,  // Asegurándonos de mapear correctamente
+                    usuarioId = it[Usuarios.id].value,
                     nombre = it[Usuarios.nombre],
                     email = it[Usuarios.email],
-                    contrasena = "",  // No devolvemos la contraseña por seguridad
+                    contrasena = it[Usuarios.contrasena], // Keep the hashed password for verification
                     aceptaTerminos = it[Usuarios.aceptaTerminos],
                     rol = it[Usuarios.rol],
                     fechaRegistro = it[Usuarios.fechaRegistro].toString()
                 )
-            }.singleOrNull()
+            }
+
+        // Verify the password using BCrypt
+        if (user != null && BCrypt.verifyer().verify(password.toCharArray(), user.contrasena).verified) {
+            // Return the user without the password
+            return@transaction user.copy(contrasena = "")
+        }
+
+        println("Login failed for email: $email")
+        return@transaction null
     }
 
     fun getAllUsers(): List<Usuario> = transaction(database) {
@@ -97,6 +109,8 @@ class UsuarioService(private val database: Database) {
                 )
             }
     }
+
+
 
     fun getUsersPaginated(page: Int, pageSize: Int): List<Usuario> = transaction(database) {
         Usuarios.selectAll()

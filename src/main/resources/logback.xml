@@ -1,12 +1,27 @@
 <configuration>
+    <!-- Appender para logs normales -->
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>%d{YYYY-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
+
+    <!-- Appender especial para capturar System.out -->
+    <appender name="STDOUT_CAPTURE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>SYSOUT: %msg%n</pattern>
+        </encoder>
+    </appender>
+
     <root level="INFO">
         <appender-ref ref="STDOUT"/>
     </root>
+
+    <!-- Logger especial para System.out -->
+    <logger name="stdout" level="DEBUG" additivity="false">
+        <appender-ref ref="STDOUT_CAPTURE"/>
+    </logger>
+
     <logger name="org.eclipse.jetty" level="INFO"/>
     <logger name="io.netty" level="INFO"/>
 </configuration>
