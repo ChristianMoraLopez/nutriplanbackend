@@ -24,6 +24,8 @@ class UsuarioService(private val database: Database) {
                 it[aceptaTerminos] = usuario.aceptaTerminos
                 it[rol] = usuario.rol
                 it[fechaRegistro] = LocalDateTime.now()
+                it[ciudad] = usuario.ciudad
+                it[localidad] = usuario.localidad
             }.value
 
             println("Usuario creado con ID: $usuarioId")
@@ -45,7 +47,9 @@ class UsuarioService(private val database: Database) {
                 contrasena = "", // Never return password hash
                 aceptaTerminos = it[Usuarios.aceptaTerminos],
                 rol = it[Usuarios.rol],
-                fechaRegistro = it[Usuarios.fechaRegistro].toString()
+                fechaRegistro = it[Usuarios.fechaRegistro].toString(),
+                ciudad = it[Usuarios.ciudad],
+                localidad = it[Usuarios.localidad]
             )
         }.singleOrNull().also {
             println("User found for id $id: ${it != null}")
@@ -81,7 +85,9 @@ class UsuarioService(private val database: Database) {
                     contrasena = it[Usuarios.contrasena], // Keep the hashed password for verification
                     aceptaTerminos = it[Usuarios.aceptaTerminos],
                     rol = it[Usuarios.rol],
-                    fechaRegistro = it[Usuarios.fechaRegistro].toString()
+                    fechaRegistro = it[Usuarios.fechaRegistro].toString(),
+                    ciudad = it[Usuarios.ciudad],
+                    localidad = it[Usuarios.localidad]
                 )
             }
 
@@ -105,7 +111,9 @@ class UsuarioService(private val database: Database) {
                     contrasena = "",  // No devolvemos la contraseña por seguridad
                     aceptaTerminos = it[Usuarios.aceptaTerminos],
                     rol = it[Usuarios.rol],
-                    fechaRegistro = it[Usuarios.fechaRegistro].toString()
+                    fechaRegistro = it[Usuarios.fechaRegistro].toString(),
+                    ciudad = it[Usuarios.ciudad],
+                    localidad = it[Usuarios.localidad]
                 )
             }
     }
@@ -123,7 +131,9 @@ class UsuarioService(private val database: Database) {
                     contrasena = "",  // No devolvemos la contraseña por seguridad
                     aceptaTerminos = it[Usuarios.aceptaTerminos],
                     rol = it[Usuarios.rol],
-                    fechaRegistro = it[Usuarios.fechaRegistro].toString()
+                    fechaRegistro = it[Usuarios.fechaRegistro].toString(),
+                    ciudad = it[Usuarios.ciudad],
+                    localidad = it[Usuarios.localidad]
                 )
             }
     }

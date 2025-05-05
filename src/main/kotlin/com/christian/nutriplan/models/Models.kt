@@ -23,8 +23,10 @@ data class Usuario(
     val aceptaTerminos: Boolean = false,
     val rol: String = "usuario",
     @Contextual
-    val fechaRegistro: String = LocalDateTime.now().toString()
-)
+    val fechaRegistro: String = LocalDateTime.now().toString(),
+    val ciudad: String,
+    val localidad: String
+    )
 
 @Serializable
 data class UsuarioResponse(
@@ -33,7 +35,9 @@ data class UsuarioResponse(
     val email: String,
     val rol: String,
     val fechaRegistro: String,
-    val aceptaTerminos: Boolean
+    val aceptaTerminos: Boolean,
+    val ciudad: String,
+    val localidad: String
 )
 
 // Authentication model
@@ -119,6 +123,8 @@ object Usuarios : IdTable<Int>("usuarios") {
     val aceptaTerminos = bool("acepta_terminos").default(false)
     val rol = varchar("rol", length = 50).default("usuario")
     val fechaRegistro = datetime("fecha_registro").clientDefault { LocalDateTime.now() }
+    val ciudad = varchar("ciudad", length = 100).default("")
+    val localidad = varchar("localidad", length = 100).default("")
 
     override val primaryKey = PrimaryKey(id, name = "PK_Usuario_ID")
 }
