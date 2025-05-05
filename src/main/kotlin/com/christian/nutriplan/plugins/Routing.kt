@@ -131,7 +131,9 @@ fun Application.configureRouting(services: Services) {
                             email = usuario.email,
                             rol = usuario.rol,
                             fechaRegistro = usuario.fechaRegistro,
-                            aceptaTerminos = usuario.aceptaTerminos
+                            aceptaTerminos = usuario.aceptaTerminos,
+                            ciudad = usuario.ciudad,
+                            localidad = usuario.localidad
                         )
                         call.respond(response)
                     } else {
