@@ -7,11 +7,11 @@ data class Services(
     val usuarioService: UsuarioService,
     val categoriaIngredienteService: CategoriaIngredienteService,
     val ingredienteService: IngredienteService,
+    val tipoComidaService: TipoComidaService,
     val metodoPreparacionService: MetodoPreparacionService,
-    val comidaService: ComidaService,
-    val objetivoService: ObjetivoService,
-    val menuService: MenuService,
-    val seleccionIngredienteService: SeleccionIngredienteService
+    val recetaService: RecetaService,
+    val recetaGuardadaService: RecetaGuardadaService,
+    val recetaIngredienteService: RecetaIngredienteService
 )
 
 fun createServices(database: Database): Services {
@@ -19,10 +19,10 @@ fun createServices(database: Database): Services {
         usuarioService = UsuarioService(database),
         categoriaIngredienteService = CategoriaIngredienteService(database),
         ingredienteService = IngredienteService(database),
+        tipoComidaService = TipoComidaService(database),
         metodoPreparacionService = MetodoPreparacionService(database),
-        comidaService = ComidaService(database),
-        objetivoService = ObjetivoService(database),
-        menuService = MenuService(database),
-        seleccionIngredienteService = SeleccionIngredienteService(database)
+        recetaService = RecetaService(database),
+        recetaGuardadaService = RecetaGuardadaService(database),
+        recetaIngredienteService = RecetaIngredienteService(database)
     )
 }

@@ -131,9 +131,7 @@ fun Application.configureRouting(services: Services) {
                             email = usuario.email,
                             rol = usuario.rol,
                             fechaRegistro = usuario.fechaRegistro,
-                            aceptaTerminos = usuario.aceptaTerminos,
-                            ciudad = usuario.ciudad,
-                            localidad = usuario.localidad
+                            aceptaTerminos = usuario.aceptaTerminos
                         )
                         call.respond(response)
                     } else {
@@ -150,13 +148,38 @@ fun Application.configureRouting(services: Services) {
             }
         }
 
-
-
         authenticate("auth-jwt") {
-            // Agrega esto al inicio de tu archivo (fuera de las funciones)
             val logger = LoggerFactory.getLogger("UserEndpoint")
-            // Agrega este endpoint a tu routing
 
+            post("/usuarios") {
+                val usuario = try {
+                    call.receive<Usuario>()
+                } catch (e: Exception) {
+                    call.respond(
+                        HttpStatusCode.BadRequest,
+                        ErrorResponse("Datos de usuario inválidos: ${e.message}")
+                    )
+                    return@post
+                }
+
+                try {
+                    val id = services.usuarioService.create(usuario)
+                    val createdUsuario = services.usuarioService.read(id)?.copy(contrasena = "")
+                        ?: throw IllegalStateException("No se pudo leer el usuario creado")
+                    call.respond(
+                        HttpStatusCode.Created,
+                        ApiResponse.Success(
+                            data = createdUsuario,
+                            message = "Usuario creado correctamente"
+                        )
+                    )
+                } catch (e: Exception) {
+                    call.respond(
+                        HttpStatusCode.Conflict,
+                        ErrorResponse("No se pudo crear el usuario: ${e.message}")
+                    )
+                }
+            }
 
             get("/usuarios/me") {
                 val principal = call.principal<JWTPrincipal>()
@@ -173,7 +196,6 @@ fun Application.configureRouting(services: Services) {
                 }
 
                 val usuario = services.usuarioService.read(userId)?.copy(contrasena = "")
-
                 if (usuario != null) {
                     call.respond(
                         HttpStatusCode.OK,
@@ -193,8 +215,6 @@ fun Application.configureRouting(services: Services) {
                 }
             }
 
-
-
             handleCrud(
                 routePath = "/categorias",
                 entityName = "Categoría",
@@ -210,7 +230,7 @@ fun Application.configureRouting(services: Services) {
 
             route("/ingredientes") {
                 get {
-                    call.respond(services.ingredienteService.getAll())
+                    call.respond(services.ingredienteService.getAllIngredientes())
                 }
 
                 get("/search") {
@@ -227,7 +247,7 @@ fun Application.configureRouting(services: Services) {
                 handleCrud(
                     routePath = "",
                     entityName = "Ingrediente",
-                    getAll = { services.ingredienteService.getAll() },
+                    getAll = { services.ingredienteService.getAllIngredientes() },
                     read = { id -> services.ingredienteService.read(id) },
                     create = { entity -> services.ingredienteService.create(entity as Ingrediente) },
                     update = { id, entity -> services.ingredienteService.update(id, entity as Ingrediente) },
@@ -250,225 +270,110 @@ fun Application.configureRouting(services: Services) {
             )
 
             handleCrud(
-                routePath = "/comidas",
-                entityName = "Comida",
-                getAll = { services.comidaService.getAll() },
-                read = { id -> services.comidaService.read(id) },
-                create = { entity -> services.comidaService.create(entity as Comida) },
-                update = { id, entity -> services.comidaService.update(id, entity as Comida) },
-                delete = { id -> services.comidaService.delete(id) },
-                receiveType = Comida::class
+                routePath = "/tipos_comida",
+                entityName = "Tipo de Comida",
+                getAll = { services.tipoComidaService.getAll() },
+                read = { id -> services.tipoComidaService.read(id) },
+                create = { entity -> services.tipoComidaService.create(entity as TipoComida) },
+                update = { id, entity -> services.tipoComidaService.update(id, entity as TipoComida) },
+                delete = { id -> services.tipoComidaService.delete(id) },
+                receiveType = TipoComida::class
             )
 
-            route("/objetivos") {
+
+
+            handleCrud(
+                routePath = "/recetas",
+                entityName = "Receta",
+                getAll = { services.recetaService.getAll() },
+                read = { id -> services.recetaService.read(id) },
+                create = { entity -> services.recetaService.create(entity as Receta) },
+                update = { id, entity -> services.recetaService.update(id, entity as Receta) },
+                delete = { id -> services.recetaService.delete(id) },
+                receiveType = Receta::class
+            )
+
+            route("/receta_ingredientes") {
                 get {
-                    val userId = call.getUserId()
-                    try {
-                        val objetivos = if (userId != null) {
-                            services.objetivoService.getAll(userId)
-                        } else {
-                            services.objetivoService.getAll()
-                        }
-                        call.respond(objetivos)
-                    } catch (e: Exception) {
-                        call.respond(
-                            HttpStatusCode.InternalServerError,
-                            ErrorResponse("Error al obtener objetivos: ${e.message}")
-                        )
-                    }
+                    call.respond(services.recetaIngredienteService.getAll())
                 }
 
-                get("/{id}") {
-                    validateId(call, "id") { id ->
-                        try {
-                            val objetivo = services.objetivoService.read(id)
-                            if (objetivo != null) {
-                                call.respond(objetivo)
-                            } else {
-                                call.respond(HttpStatusCode.NotFound, ErrorResponse("Objetivo no encontrado"))
-                            }
-                        } catch (e: Exception) {
-                            call.respond(
-                                HttpStatusCode.InternalServerError,
-                                ErrorResponse("Error al leer objetivo: ${e.message}")
-                            )
-                        }
+                get("/receta/{recetaId}") {
+                    validateId(call, "recetaId") { recetaId ->
+                        call.respond(services.recetaIngredienteService.getByReceta(recetaId))
                     }
                 }
 
                 post {
-                    val principal = call.principal<JWTPrincipal>()
-                    val userId = principal?.payload?.getClaim("userId")?.asInt()
+                    val userId = call.getUserId()
                     if (userId == null) {
                         call.respond(HttpStatusCode.Unauthorized, ErrorResponse("Usuario no autenticado"))
                         return@post
                     }
 
-                    val objetivo = try {
-                        call.receive<Objetivo>()
+                    val recetaIngrediente = try {
+                        call.receive<RecetaIngrediente>()
                     } catch (e: Exception) {
                         call.respond(
                             HttpStatusCode.BadRequest,
-                            ErrorResponse("Datos de objetivo inválidos: ${e.message}")
-                        )
-                        return@post
-                    }
-
-                    if (objetivo.usuarioId == null) {
-                        call.respond(HttpStatusCode.BadRequest, ErrorResponse("usuarioId es requerido"))
-                        return@post
-                    }
-                    if (objetivo.usuarioId != userId) {
-                        call.respond(
-                            HttpStatusCode.Forbidden,
-                            ErrorResponse("usuarioId no coincide con el usuario autenticado")
+                            ErrorResponse("Datos de receta_ingrediente inválidos: ${e.message}")
                         )
                         return@post
                     }
 
                     try {
-                        val id = services.objetivoService.create(objetivo)
-                        val createdObjetivo = services.objetivoService.read(id) ?: objetivo
-                        call.respond(HttpStatusCode.Created, createdObjetivo)
+                        services.recetaIngredienteService.create(recetaIngrediente)
+                        call.respond(HttpStatusCode.Created, recetaIngrediente)
                     } catch (e: Exception) {
                         call.respond(
                             HttpStatusCode.Conflict,
-                            ErrorResponse("No se pudo crear el objetivo: ${e.message}")
+                            ErrorResponse("No se pudo crear la relación receta-ingrediente: ${e.message}")
                         )
                     }
                 }
 
-                put("/{id}") {
-                    val principal = call.principal<JWTPrincipal>()
-                    val userId = principal?.payload?.getClaim("userId")?.asInt()
-                    validateId(call, "id") { id ->
-                        if (userId == null) {
-                            call.respond(HttpStatusCode.Unauthorized, ErrorResponse("Usuario no autenticado"))
-                            return@validateId
-                        }
+                delete("/{recetaId}/{ingredienteId}") {
+                    val userId = call.getUserId()
+                    if (userId == null) {
+                        call.respond(HttpStatusCode.Unauthorized, ErrorResponse("Usuario no autenticado"))
+                        return@delete
+                    }
 
-                        try {
-                            val existingObjetivo = services.objetivoService.read(id)
-                            if (existingObjetivo == null || existingObjetivo.usuarioId != userId) {
+                    validateId(call, "recetaId") { recetaId ->
+                        validateId(call, "ingredienteId") { ingredienteId ->
+                            try {
+                                services.recetaIngredienteService.delete(recetaId, ingredienteId)
                                 call.respond(
-                                    HttpStatusCode.Forbidden,
-                                    ErrorResponse("No tienes permiso para modificar este objetivo")
+                                    HttpStatusCode.OK,
+                                    mapOf("message" to "Relación receta-ingrediente eliminada correctamente")
                                 )
-                                return@validateId
-                            }
-
-                            val updatedObjetivo = try {
-                                call.receive<Objetivo>()
                             } catch (e: Exception) {
                                 call.respond(
-                                    HttpStatusCode.BadRequest,
-                                    ErrorResponse("Datos de objetivo inválidos: ${e.message}")
+                                    HttpStatusCode.InternalServerError,
+                                    ErrorResponse("No se pudo eliminar la relación receta-ingrediente: ${e.message}")
                                 )
-                                return@validateId
                             }
-
-                            if (updatedObjetivo.usuarioId != userId) {
-                                call.respond(
-                                    HttpStatusCode.Forbidden,
-                                    ErrorResponse("usuarioId no coincide con el usuario autenticado")
-                                )
-                                return@validateId
-                            }
-
-                            services.objetivoService.update(id, updatedObjetivo)
-                            call.respond(
-                                HttpStatusCode.OK,
-                                mapOf("message" to "Objetivo actualizado correctamente")
-                            )
-                        } catch (e: Exception) {
-                            call.respond(
-                                HttpStatusCode.InternalServerError,
-                                ErrorResponse("No se pudo actualizar el objetivo: ${e.message}")
-                            )
-                        }
-                    }
-                }
-
-                delete("/{id}") {
-                    val principal = call.principal<JWTPrincipal>()
-                    val userId = principal?.payload?.getClaim("userId")?.asInt()
-                    validateId(call, "id") { id ->
-                        if (userId == null) {
-                            call.respond(HttpStatusCode.Unauthorized, ErrorResponse("Usuario no autenticado"))
-                            return@validateId
-                        }
-
-                        try {
-                            val existingObjetivo = services.objetivoService.read(id)
-                            if (existingObjetivo == null || existingObjetivo.usuarioId != userId) {
-                                call.respond(
-                                    HttpStatusCode.Forbidden,
-                                    ErrorResponse("No tienes permiso para eliminar este objetivo")
-                                )
-                                return@validateId
-                            }
-
-                            services.objetivoService.delete(id)
-                            call.respond(
-                                HttpStatusCode.OK,
-                                mapOf("message" to "Objetivo eliminado correctamente")
-                            )
-                        } catch (e: Exception) {
-                            call.respond(
-                                HttpStatusCode.InternalServerError,
-                                ErrorResponse("No se pudo eliminar el objetivo: ${e.message}")
-                            )
                         }
                     }
                 }
             }
 
-            route("/menus") {
+            route("/recetas_guardadas") {
                 get {
                     val userId = call.getUserId()
+                    if (userId == null) {
+                        call.respond(HttpStatusCode.Unauthorized, ErrorResponse("Usuario no autenticado"))
+                        return@get
+                    }
+
                     try {
-                        val menus = if (userId != null) {
-                            services.menuService.getByUsuario(userId)
-                        } else {
-                            services.menuService.getAll()
-                        }
-                        call.respond(menus)
+                        val recetasGuardadas = services.recetaGuardadaService.getByUsuario(userId)
+                        call.respond(recetasGuardadas)
                     } catch (e: Exception) {
                         call.respond(
                             HttpStatusCode.InternalServerError,
-                            ErrorResponse("Error al obtener menús: ${e.message}")
+                            ErrorResponse("Error al obtener recetas guardadas: ${e.message}")
                         )
-                    }
-                }
-
-                get("/{id}") {
-                    validateId(call, "id") { id ->
-                        try {
-                            val menu = services.menuService.read(id)
-                            if (menu != null) {
-                                call.respond(menu)
-                            } else {
-                                call.respond(HttpStatusCode.NotFound, ErrorResponse("Menú no encontrado"))
-                            }
-                        } catch (e: Exception) {
-                            call.respond(
-                                HttpStatusCode.InternalServerError,
-                                ErrorResponse("Error al leer menú: ${e.message}")
-                            )
-                        }
-                    }
-                }
-
-                get("/{id}/ingredientes") {
-                    validateId(call, "id") { id ->
-                        try {
-                            call.respond(services.seleccionIngredienteService.getSeleccionesConIngredientes(id))
-                        } catch (e: Exception) {
-                            call.respond(
-                                HttpStatusCode.InternalServerError,
-                                ErrorResponse("Error al obtener ingredientes del menú: ${e.message}")
-                            )
-                        }
                     }
                 }
 
@@ -479,71 +384,72 @@ fun Application.configureRouting(services: Services) {
                         return@post
                     }
 
-                    val newMenu = try {
-                        call.receive<Menu>()
+                    val recetaGuardada = try {
+                        call.receive<RecetaGuardada>()
                     } catch (e: Exception) {
                         call.respond(
                             HttpStatusCode.BadRequest,
-                            ErrorResponse("Datos de menú inválidos: ${e.message}")
+                            ErrorResponse("Datos de receta guardada inválidos: ${e.message}")
                         )
                         return@post
                     }
 
-                    if (newMenu.usuarioId != 0 && newMenu.usuarioId != userId) {
+                    if (recetaGuardada.usuarioId != userId) {
                         call.respond(
                             HttpStatusCode.Forbidden,
-                            ErrorResponse("No puedes crear menús para otros usuarios")
+                            ErrorResponse("No puedes guardar recetas para otro usuario")
                         )
                         return@post
                     }
 
                     try {
-                        val menuToCreate = newMenu.copy(usuarioId = userId)
-                        val id = services.menuService.create(menuToCreate)
-                        val createdMenu = services.menuService.read(id) ?: menuToCreate
-                        call.respond(HttpStatusCode.Created, createdMenu)
+                        val id = services.recetaGuardadaService.create(recetaGuardada)
+                        val createdRecetaGuardada = services.recetaGuardadaService.read(id) ?: recetaGuardada
+                        call.respond(HttpStatusCode.Created, createdRecetaGuardada)
                     } catch (e: Exception) {
                         call.respond(
                             HttpStatusCode.Conflict,
-                            ErrorResponse("No se pudo crear el menú: ${e.message}")
+                            ErrorResponse("No se pudo guardar la receta: ${e.message}")
                         )
                     }
                 }
 
                 put("/{id}") {
                     val userId = call.getUserId()
-                    validateId(call, "id") { id ->
-                        if (userId == null) {
-                            call.respond(HttpStatusCode.Unauthorized, ErrorResponse("Usuario no autenticado"))
-                            return@validateId
-                        }
+                    if (userId == null) {
+                        call.respond(HttpStatusCode.Unauthorized, ErrorResponse("Usuario no autenticado"))
+                        return@put
+                    }
 
+                    validateId(call, "id") { id ->
                         try {
-                            val existingMenu = services.menuService.read(id)
-                            if (existingMenu == null || existingMenu.usuarioId != userId) {
+                            val existingRecetaGuardada = services.recetaGuardadaService.read(id)
+                            if (existingRecetaGuardada == null || existingRecetaGuardada.usuarioId != userId) {
                                 call.respond(
                                     HttpStatusCode.Forbidden,
-                                    ErrorResponse("No tienes permiso para modificar este menú")
+                                    ErrorResponse("No tienes permiso para modificar esta receta guardada")
                                 )
                                 return@validateId
                             }
 
-                            val updatedMenu = call.receive<Menu>()
-                            val menuToUpdate = updatedMenu.copy(usuarioId = userId)
-
-                            val rowsAffected = services.menuService.update(id, menuToUpdate)
-                            if (rowsAffected > 0) {
+                            val updatedRecetaGuardada = call.receive<RecetaGuardada>()
+                            if (updatedRecetaGuardada.usuarioId != userId) {
                                 call.respond(
-                                    HttpStatusCode.OK,
-                                    mapOf("message" to "Menú actualizado correctamente")
+                                    HttpStatusCode.Forbidden,
+                                    ErrorResponse("No puedes modificar el usuario de la receta guardada")
                                 )
-                            } else {
-                                call.respond(HttpStatusCode.NotFound, ErrorResponse("Menú no encontrado"))
+                                return@validateId
                             }
+
+                            services.recetaGuardadaService.update(id, updatedRecetaGuardada)
+                            call.respond(
+                                HttpStatusCode.OK,
+                                mapOf("message" to "Receta guardada actualizada correctamente")
+                            )
                         } catch (e: Exception) {
                             call.respond(
                                 HttpStatusCode.InternalServerError,
-                                ErrorResponse("No se pudo actualizar el menú: ${e.message}")
+                                ErrorResponse("No se pudo actualizar la receta guardada: ${e.message}")
                             )
                         }
                     }
@@ -551,180 +457,32 @@ fun Application.configureRouting(services: Services) {
 
                 delete("/{id}") {
                     val userId = call.getUserId()
-                    validateId(call, "id") { id ->
-                        if (userId == null) {
-                            call.respond(HttpStatusCode.Unauthorized, ErrorResponse("Usuario no autenticado"))
-                            return@validateId
-                        }
+                    if (userId == null) {
+                        call.respond(HttpStatusCode.Unauthorized, ErrorResponse("Usuario no autenticado"))
+                        return@delete
+                    }
 
+                    validateId(call, "id") { id ->
                         try {
-                            val existingMenu = services.menuService.read(id)
-                            if (existingMenu == null || existingMenu.usuarioId != userId) {
+                            val existingRecetaGuardada = services.recetaGuardadaService.read(id)
+                            if (existingRecetaGuardada == null || existingRecetaGuardada.usuarioId != userId) {
                                 call.respond(
                                     HttpStatusCode.Forbidden,
-                                    ErrorResponse("No tienes permiso para eliminar este menú")
+                                    ErrorResponse("No tienes permiso para eliminar esta receta guardada")
                                 )
                                 return@validateId
                             }
 
-                            val rowsAffected = services.menuService.delete(id)
-                            if (rowsAffected > 0) {
-                                call.respond(
-                                    HttpStatusCode.OK,
-                                    mapOf("message" to "Menú eliminado correctamente")
-                                )
-                            } else {
-                                call.respond(HttpStatusCode.NotFound, ErrorResponse("Menú no encontrado"))
-                            }
+                            services.recetaGuardadaService.delete(id)
+                            call.respond(
+                                HttpStatusCode.OK,
+                                mapOf("message" to "Receta guardada eliminada correctamente")
+                            )
                         } catch (e: Exception) {
                             call.respond(
                                 HttpStatusCode.InternalServerError,
-                                ErrorResponse("No se pudo eliminar el menú: ${e.message}")
+                                ErrorResponse("No se pudo eliminar la receta guardada: ${e.message}")
                             )
-                        }
-                    }
-                }
-
-                route("/{menuId}/ingredientes") {
-                    post {
-                        val userId = call.getUserId()
-                        validateId(call, "menuId") { menuId ->
-                            if (userId == null) {
-                                call.respond(
-                                    HttpStatusCode.Unauthorized,
-                                    ErrorResponse("Usuario no autenticado")
-                                )
-                                return@validateId
-                            }
-
-                            try {
-                                val existingMenu = services.menuService.read(menuId)
-                                if (existingMenu == null || existingMenu.usuarioId != userId) {
-                                    call.respond(
-                                        HttpStatusCode.Forbidden,
-                                        ErrorResponse("No tienes permiso para modificar este menú")
-                                    )
-                                    return@validateId
-                                }
-
-                                val newSelection = call.receive<SeleccionIngrediente>()
-                                val selectionToCreate = newSelection.copy(menuId = menuId)
-
-                                val id = services.seleccionIngredienteService.create(selectionToCreate)
-                                val createdSelection =
-                                    services.seleccionIngredienteService.read(id) ?: selectionToCreate
-                                call.respond(HttpStatusCode.Created, createdSelection)
-                            } catch (e: Exception) {
-                                call.respond(
-                                    HttpStatusCode.Conflict,
-                                    ErrorResponse("No se pudo agregar el ingrediente al menú: ${e.message}")
-                                )
-                            }
-                        }
-                    }
-
-                    put("/{seleccionId}") {
-                        val userId = call.getUserId()
-                        validateId(call, "menuId") { menuId ->
-                            validateId(call, "seleccionId") { seleccionId ->
-                                if (userId == null) {
-                                    call.respond(
-                                        HttpStatusCode.Unauthorized,
-                                        ErrorResponse("Usuario no autenticado")
-                                    )
-                                    return@validateId
-                                }
-
-                                try {
-                                    val existingMenu = services.menuService.read(menuId)
-                                    val existingSelection = services.seleccionIngredienteService.read(seleccionId)
-
-                                    if (existingMenu == null || existingMenu.usuarioId != userId ||
-                                        existingSelection == null || existingSelection.menuId != menuId
-                                    ) {
-                                        call.respond(
-                                            HttpStatusCode.Forbidden,
-                                            ErrorResponse("No tienes permiso para modificar este ingrediente del menú")
-                                        )
-                                        return@validateId
-                                    }
-
-                                    val updatedSelection = call.receive<SeleccionIngrediente>()
-                                    val selectionToUpdate = updatedSelection.copy(
-                                        menuId = menuId,
-                                        seleccionId = seleccionId
-                                    )
-
-                                    val rowsAffected = services.seleccionIngredienteService.update(
-                                        seleccionId,
-                                        selectionToUpdate
-                                    )
-                                    if (rowsAffected > 0) {
-                                        call.respond(
-                                            HttpStatusCode.OK,
-                                            mapOf("message" to "Ingrediente del menú actualizado correctamente")
-                                        )
-                                    } else {
-                                        call.respond(
-                                            HttpStatusCode.NotFound,
-                                            ErrorResponse("Selección de ingrediente no encontrada")
-                                        )
-                                    }
-                                } catch (e: Exception) {
-                                    call.respond(
-                                        HttpStatusCode.InternalServerError,
-                                        ErrorResponse("No se pudo actualizar el ingrediente del menú: ${e.message}")
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    delete("/{seleccionId}") {
-                        val userId = call.getUserId()
-                        validateId(call, "menuId") { menuId ->
-                            validateId(call, "seleccionId") { seleccionId ->
-                                if (userId == null) {
-                                    call.respond(
-                                        HttpStatusCode.Unauthorized,
-                                        ErrorResponse("Usuario no autenticado")
-                                    )
-                                    return@validateId
-                                }
-
-                                try {
-                                    val existingMenu = services.menuService.read(menuId)
-                                    val existingSelection = services.seleccionIngredienteService.read(seleccionId)
-
-                                    if (existingMenu == null || existingMenu.usuarioId != userId ||
-                                        existingSelection == null || existingSelection.menuId != menuId
-                                    ) {
-                                        call.respond(
-                                            HttpStatusCode.Forbidden,
-                                            ErrorResponse("No tienes permiso para eliminar este ingrediente del menú")
-                                        )
-                                        return@validateId
-                                    }
-
-                                    val rowsAffected = services.seleccionIngredienteService.delete(seleccionId)
-                                    if (rowsAffected > 0) {
-                                        call.respond(
-                                            HttpStatusCode.OK,
-                                            mapOf("message" to "Ingrediente eliminado del menú correctamente")
-                                        )
-                                    } else {
-                                        call.respond(
-                                            HttpStatusCode.NotFound,
-                                            ErrorResponse("Selección de ingrediente no encontrada")
-                                        )
-                                    }
-                                } catch (e: Exception) {
-                                    call.respond(
-                                        HttpStatusCode.InternalServerError,
-                                        ErrorResponse("No se pudo eliminar el ingrediente del menú: ${e.message}")
-                                    )
-                                }
-                            }
                         }
                     }
                 }
@@ -737,26 +495,19 @@ fun Application.configureRouting(services: Services) {
             }
 
             get("/ingredientes") {
-                call.respond(services.ingredienteService.getAll())
+                call.respond(services.ingredienteService.getAllIngredientes())
+            }
+
+            get("/tipos_comida") {
+                call.respond(services.tipoComidaService.getAll())
             }
 
             get("/metodos") {
                 call.respond(services.metodoPreparacionService.getAll())
             }
 
-            get("/comidas") {
-                call.respond(services.comidaService.getAll())
-            }
-
-            get("/objetivos") {
-                try {
-                    call.respond(services.objetivoService.getAll())
-                } catch (e: Exception) {
-                    call.respond(
-                        HttpStatusCode.InternalServerError,
-                        ErrorResponse("Error al obtener objetivos: ${e.message}")
-                    )
-                }
+            get("/recetas") {
+                call.respond(services.recetaService.getAll())
             }
         }
     }
