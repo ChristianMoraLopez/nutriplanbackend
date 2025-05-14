@@ -268,10 +268,11 @@ fun Application.configureRouting(services: Services) {
                         }
 
                         services.usuarioService.update(id, updatedUsuario.copy(
-                            usuarioId = id, // Ensure ID is not changed
-                            aceptaTerminos = existingUsuario.aceptaTerminos, // Preserve existing values
+                            usuarioId = id,
+                            aceptaTerminos = existingUsuario.aceptaTerminos,
                             rol = existingUsuario.rol,
                             fechaRegistro = existingUsuario.fechaRegistro
+                            // Note: ciudad and localidad are updated from the request
                         ))
                         val updated = services.usuarioService.read(id)?.copy(contrasena = "")
                         call.respond(

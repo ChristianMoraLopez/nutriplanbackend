@@ -57,14 +57,20 @@ class UsuarioService(private val database: Database) {
     }
 
     fun update(id: Int, usuario: Usuario) = transaction(database) {
+        val bcrypt = BCrypt.withDefaults()
         Usuarios.update({ Usuarios.id eq id }) {
             it[nombre] = usuario.nombre
             it[email] = usuario.email
             if (usuario.contrasena.isNotEmpty()) {
-                it[contrasena] = usuario.contrasena
+                val hashedPassword = bcrypt.hashToString(12, usuario.contrasena.toCharArray())
+                it[contrasena] = hashedPassword
             }
             it[aceptaTerminos] = usuario.aceptaTerminos
             it[rol] = usuario.rol
+            it[ciudad] = usuario.ciudad
+            it[localidad] = usuario.localidad
+        }.also { rowsAffected ->
+            println("Updated user $id: $rowsAffected rows affected")
         }
     }
 
