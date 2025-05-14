@@ -215,6 +215,84 @@ fun Application.configureRouting(services: Services) {
                 }
             }
 
+            // New PUT /usuarios/{id} endpoint
+            put("/usuarios/{id}") {
+                val userId = call.getUserId()
+                if (userId == null) {
+                    call.respond(
+                        HttpStatusCode.Unauthorized,
+                        ApiResponse.Error(
+                            message = "Usuario no autenticado",
+                            error = "Token inválido"
+                        )
+                    )
+                    return@put
+                }
+
+                validateId(call, "id") { id ->
+                    if (id != userId) {
+                        call.respond(
+                            HttpStatusCode.Forbidden,
+                            ApiResponse.Error(
+                                message = "No tienes permiso para modificar este usuario",
+                                error = "ID mismatch"
+                            )
+                        )
+                        return@validateId
+                    }
+
+                    val updatedUsuario = try {
+                        call.receive<Usuario>()
+                    } catch (e: Exception) {
+                        call.respond(
+                            HttpStatusCode.BadRequest,
+                            ApiResponse.Error(
+                                message = "Datos de usuario inválidos",
+                                error = e.message
+                            )
+                        )
+                        return@validateId
+                    }
+
+                    try {
+                        val existingUsuario = services.usuarioService.read(id)
+                        if (existingUsuario == null) {
+                            call.respond(
+                                HttpStatusCode.NotFound,
+                                ApiResponse.Error(
+                                    message = "Usuario no encontrado",
+                                    error = "El ID de usuario no existe"
+                                )
+                            )
+                            return@validateId
+                        }
+
+                        services.usuarioService.update(id, updatedUsuario.copy(
+                            usuarioId = id, // Ensure ID is not changed
+                            aceptaTerminos = existingUsuario.aceptaTerminos, // Preserve existing values
+                            rol = existingUsuario.rol,
+                            fechaRegistro = existingUsuario.fechaRegistro
+                        ))
+                        val updated = services.usuarioService.read(id)?.copy(contrasena = "")
+                        call.respond(
+                            HttpStatusCode.OK,
+                            ApiResponse.Success(
+                                data = updated,
+                                message = "Usuario actualizado correctamente"
+                            )
+                        )
+                    } catch (e: Exception) {
+                        call.respond(
+                            HttpStatusCode.InternalServerError,
+                            ApiResponse.Error(
+                                message = "No se pudo actualizar el usuario",
+                                error = e.message
+                            )
+                        )
+                    }
+                }
+            }
+
             handleCrud(
                 routePath = "/categorias",
                 entityName = "Categoría",
