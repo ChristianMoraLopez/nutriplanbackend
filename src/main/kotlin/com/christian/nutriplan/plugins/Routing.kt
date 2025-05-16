@@ -148,7 +148,7 @@ fun Application.configureRouting(services: Services) {
             }
         }
 
-        authenticate("auth-jwt") {
+        authenticate("auth-jwt", "auth-firebase") {
             val logger = LoggerFactory.getLogger("UserEndpoint")
 
             post("/usuarios") {
@@ -215,7 +215,6 @@ fun Application.configureRouting(services: Services) {
                 }
             }
 
-            // New PUT /usuarios/{id} endpoint
             put("/usuarios/{id}") {
                 val userId = call.getUserId()
                 if (userId == null) {
@@ -272,7 +271,6 @@ fun Application.configureRouting(services: Services) {
                             aceptaTerminos = existingUsuario.aceptaTerminos,
                             rol = existingUsuario.rol,
                             fechaRegistro = existingUsuario.fechaRegistro
-                            // Note: ciudad and localidad are updated from the request
                         ))
                         val updated = services.usuarioService.read(id)?.copy(contrasena = "")
                         call.respond(
@@ -358,8 +356,6 @@ fun Application.configureRouting(services: Services) {
                 delete = { id -> services.tipoComidaService.delete(id) },
                 receiveType = TipoComida::class
             )
-
-
 
             handleCrud(
                 routePath = "/recetas",

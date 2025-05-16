@@ -1,5 +1,12 @@
+ktor:
+  application:
+    modules:
+      - com.christian.nutriplan.ApplicationKt.module
+  deployment:
+    port: 8080
+
 jwt:
-  secret: "1234567489"
+  secret: "UnSecretoDePruebaSuficientementeLargo12345"
   issuer: "nutriplan-api"
   audience: "nutriplan-users"
   realm: "NutriPlan App"
@@ -13,12 +20,16 @@ database:
     maxPoolSize: 10
     idleTimeout: 10000
 
-ktor:
-  deployment:
-    port: 8080
-    watch:
-      - classes
-      - resources
-  application:
-    modules:
-      - com.christian.nutriplan.ApplicationKt.module
+firebase:
+  credentials:
+    type: "service_account"
+    project_id: "nutriplan-d963a"
+    private_key_id: "bf86d5496a379fca49302d1c96bbc387c7258c5e"
+    private_key: "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC+SH1+TscHW6ex\nupWIlCMQcViOFIaH3f4LWo7L8umvrz5/sa9hpO+EcUHxn65idZZUhfuQ3nDVJhbe\nUkts0lZ2513PJGStbbeJuUqc2BS9gommC69nZzaHwUmk/SuwpXBpkyLEe4j0uNDH\nrefsVzXb+eDcQCb99uxk2G+psA1qopNczjxNtJ0PyIB0CVzuyujHHYD4D1KBHdfx\nOq5VFGe1eYghgOvW/HmtX/Aj0DdT8OnzPgd4CiAVFKEpaeId6MSwQbp5YLkmnDc8\nMfmmr35lOszUleTx44OVjGHw6L+VEkqhD4sgeMy6V8aWmvGVGpZu1BMMTcncp6au\n+Yid1yIjAgMBAAECggEAR9OwP1X4TiA8cFvYp0oX5FSM03EPCUl0ZI/F+FmU+aLC\nikwlwkuSuCFSfaVDm9n8KaK7v8cfu23Z0wkofIb3aYHTiOYZdNfGIOBHOGZeidy1\nHe8qQnOVA3CkXnnMnK0OfmOyi42AOLRs5vsP4UhYRdWQmkNDFLm5KSYEHH8eyWG2\nAGeW6+6MStFttNGOsucDTG2ac+Ng05EgkGJdbIrElZX5Nw5esV7WBiy6P7JrReXP\nX42r9qjU5j+yJZzMWnoPXb/+hC4i+E70D0+/D9ot5OO2ppoU6yQ8RbtazCpip2fe\nQXIE4zCl3lSohl1xqASUihjzQ5BuySUoutY4F+TqSQKBgQD7y9LE0+Ud96RP1e9U\nn39QPWgoK6ZFmUw7mC19ddJ9mLy80irQN9XZT6xnUS3uNTEdpSgWpZjsjSZXTj0d\nKsmS6jaq7Iv1Ty84ZJXgo/BOFA+EnxeeK089B6h8r/aHVEjHksdLAF6oCMK+brbZ\nbC/Kw7v+smUNKqe6PR+bDTzGiQKBgQDBdcKizb7VXnXnkRitOZUeN5Xzl76mG06U\ndl5r4khIVE/m1Kwul7sb+cVZiYrky7lyVWlreJ3L4yeebImGsm5DBVruT0yDaKNl\nxgEVE87/kNc3uzX6bzUX5kiZYVLtCf40GcLBNQvt7lYfB8aKIW7VWOc7Z8NtlQps\nVrVXrgM4SwKBgQCBfwTp13RJIjhuGr+YjOLkOICd0D0WJE4RhCU5FeRoVaoTjh8Y\nsO6ZcaFgDV8K2G5nKa5hX08zsTAbzJAftQawOSZeZ4NfaRcG8KwoOQf4j9afRVbX\nMLzyzUJ4xeKLHOzFPxah2xHTZ5YIbFY7oak+pcXEqqjPybUzUgY0Lu2nyQKBgDEw\n2ES9PADU+/XdlwC0243LZH2D4B4sY1asomWcK/T4OzjeasmOGy2J3PxfVMnIY2cH\nAL8q9DSblb9aqb1uMUspWW2vDC19tc5zAmNxnfitw4uQNrFvBXkGPP+DF6reF5z3\nz+WAr3/YUl2hhIIq7huhd2pLgA2lD/lsMsAQpxDxAoGAI8iAkTHZ7RCtRPMUTiYk\nIYHmW0+jkeS+apjlEcZ1j3rgzlcaKtR3nYd6cS4RkQDQDFgssSDw06t89D/Dt+QS\nBPSQ/PwHRXkQmG8Ij2RLs1Lj6ptls3c2clSZyzzzEHzgZRTlL4bNZB0Orxe96k66\nWjtBWwb07xwuys4iIJ+6bSE=\n-----END PRIVATE KEY-----\n"
+    client_email: "firebase-adminsdk-fbsvc@nutriplan-d963a.iam.gserviceaccount.com"
+    client_id: "102923573642328187981"
+    auth_uri: "https://accounts.google.com/o/oauth2/auth"
+    token_uri: "https://oauth2.googleapis.com/token"
+    auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs"
+    client_x509_cert_url: "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40nutriplan-d963a.iam.gserviceaccount.com"
+    universe_domain: "googleapis.com"

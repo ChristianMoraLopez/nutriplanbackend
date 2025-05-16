@@ -1,0 +1,1 @@
+        val serviceAccountPath = "src/main/resources/nutriplan-d963a-firebase-adminsdk-fbsvc-c0edc36a68.json"

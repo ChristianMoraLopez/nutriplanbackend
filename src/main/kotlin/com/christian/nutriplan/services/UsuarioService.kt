@@ -7,16 +7,17 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.time.LocalDateTime
-import org.jetbrains.exposed.sql.slice
-
 
 class UsuarioService(private val database: Database) {
     fun create(usuario: Usuario): Int = transaction(database) {
         val bcrypt = BCrypt.withDefaults()
-        val hashedPassword = bcrypt.hashToString(12, usuario.contrasena.toCharArray())
+        val hashedPassword = if (usuario.contrasena.isNotEmpty()) {
+            bcrypt.hashToString(12, usuario.contrasena.toCharArray())
+        } else {
+            "" // No password for Google Sign-In users
+        }
         addLogger(StdOutSqlLogger)
         try {
-            // Aquí está el cambio clave - usamos Usuarios.id que es creado por IntIdTable
             val usuarioId = Usuarios.insertAndGetId {
                 it[nombre] = usuario.nombre
                 it[email] = usuario.email
@@ -27,7 +28,6 @@ class UsuarioService(private val database: Database) {
                 it[ciudad] = usuario.ciudad
                 it[localidad] = usuario.localidad
             }.value
-
             println("Usuario creado con ID: $usuarioId")
             return@transaction usuarioId
         } catch (e: Exception) {
@@ -44,7 +44,7 @@ class UsuarioService(private val database: Database) {
                 usuarioId = it[Usuarios.id].value,
                 nombre = it[Usuarios.nombre],
                 email = it[Usuarios.email],
-                contrasena = "", // Never return password hash
+                contrasena = "",
                 aceptaTerminos = it[Usuarios.aceptaTerminos],
                 rol = it[Usuarios.rol],
                 fechaRegistro = it[Usuarios.fechaRegistro].toString(),
@@ -54,6 +54,23 @@ class UsuarioService(private val database: Database) {
         }.singleOrNull().also {
             println("User found for id $id: ${it != null}")
         }
+    }
+
+    fun findByEmail(email: String): Usuario? = transaction(database) {
+        addLogger(StdOutSqlLogger)
+        Usuarios.selectAll().where { Usuarios.email eq email }.map {
+            Usuario(
+                usuarioId = it[Usuarios.id].value,
+                nombre = it[Usuarios.nombre],
+                email = it[Usuarios.email],
+                contrasena = "",
+                aceptaTerminos = it[Usuarios.aceptaTerminos],
+                rol = it[Usuarios.rol],
+                fechaRegistro = it[Usuarios.fechaRegistro].toString(),
+                ciudad = it[Usuarios.ciudad],
+                localidad = it[Usuarios.localidad]
+            )
+        }.singleOrNull()
     }
 
     fun update(id: Int, usuario: Usuario) = transaction(database) {
@@ -80,7 +97,6 @@ class UsuarioService(private val database: Database) {
 
     fun login(email: String, password: String): Usuario? = transaction(database) {
         addLogger(StdOutSqlLogger)
-        // Fetch the user by email
         val user = Usuarios.selectAll().where { Usuarios.email eq email }
             .singleOrNull()
             ?.let {
@@ -88,7 +104,7 @@ class UsuarioService(private val database: Database) {
                     usuarioId = it[Usuarios.id].value,
                     nombre = it[Usuarios.nombre],
                     email = it[Usuarios.email],
-                    contrasena = it[Usuarios.contrasena], // Keep the hashed password for verification
+                    contrasena = it[Usuarios.contrasena],
                     aceptaTerminos = it[Usuarios.aceptaTerminos],
                     rol = it[Usuarios.rol],
                     fechaRegistro = it[Usuarios.fechaRegistro].toString(),
@@ -97,12 +113,9 @@ class UsuarioService(private val database: Database) {
                 )
             }
 
-        // Verify the password using BCrypt
-        if (user != null && BCrypt.verifyer().verify(password.toCharArray(), user.contrasena).verified) {
-            // Return the user without the password
+        if (user != null && user.contrasena.isNotEmpty() && BCrypt.verifyer().verify(password.toCharArray(), user.contrasena).verified) {
             return@transaction user.copy(contrasena = "")
         }
-
         println("Login failed for email: $email")
         return@transaction null
     }
@@ -114,7 +127,7 @@ class UsuarioService(private val database: Database) {
                     usuarioId = it[Usuarios.id].value,
                     nombre = it[Usuarios.nombre],
                     email = it[Usuarios.email],
-                    contrasena = "",  // No devolvemos la contraseña por seguridad
+                    contrasena = "",
                     aceptaTerminos = it[Usuarios.aceptaTerminos],
                     rol = it[Usuarios.rol],
                     fechaRegistro = it[Usuarios.fechaRegistro].toString(),
@@ -124,17 +137,15 @@ class UsuarioService(private val database: Database) {
             }
     }
 
-
-
     fun getUsersPaginated(page: Int, pageSize: Int): List<Usuario> = transaction(database) {
         Usuarios.selectAll()
-            .limit(pageSize).offset(start = (page - 1) * pageSize.toLong())
+            .limit(pageSize).offset((page - 1) * pageSize.toLong())
             .map {
                 Usuario(
                     usuarioId = it[Usuarios.id].value,
                     nombre = it[Usuarios.nombre],
                     email = it[Usuarios.email],
-                    contrasena = "",  // No devolvemos la contraseña por seguridad
+                    contrasena = "",
                     aceptaTerminos = it[Usuarios.aceptaTerminos],
                     rol = it[Usuarios.rol],
                     fechaRegistro = it[Usuarios.fechaRegistro].toString(),
