@@ -20,12 +20,12 @@ fun Application.module() {
 
 
     try {
-        val serviceAccountPath = "src/main/resources/nutriplan-d963a-firebase-adminsdk-fbsvc-c62cad2f50.json"
+        val serviceAccountPath = "nutriplan-d963a-firebase-adminsdk-fbsvc-c62cad2f50.json"
         logger.info("Loading Firebase credentials from: $serviceAccountPath")
         val credentials = GoogleCredentials.fromStream(FileInputStream(serviceAccountPath))
         val options = FirebaseOptions.builder()
             .setCredentials(credentials)
-            .setProjectId("nutriplan-d963a") // <--- ¡AÑADE ESTA LÍNEA EXPLÍCITAMENTE!
+            .setProjectId("nutriplan-d963a")
             .build()
 
         if (FirebaseApp.getApps().isEmpty()) {
