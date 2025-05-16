@@ -9,7 +9,7 @@ group = "com.christian"
 version = "0.0.1"
 
 application {
-    mainClass = "com.christian.nutriplan.ApplicationKtKt"
+    mainClass = "com.christian.nutriplan.ApplicationKt"
 
     val isDevelopment: Boolean = project.ext.has("development")
     applicationDefaultJvmArgs = listOf("-Dio.ktor.development=$isDevelopment")
