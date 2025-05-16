@@ -7,8 +7,8 @@ import com.google.auth.oauth2.GoogleCredentials
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import org.slf4j.LoggerFactory
+import io.github.cdimascio.dotenv.dotenv
 import java.io.ByteArrayInputStream
-import java.io.FileInputStream
 
 fun main(args: Array<String>) {
     EngineMain.main(args)
@@ -18,11 +18,16 @@ fun Application.module() {
     val logger = LoggerFactory.getLogger("Application")
     logger.info("Starting module configuration")
 
-
     try {
-        val serviceAccountPath = "nutriplan-d963a-firebase-adminsdk-fbsvc-c62cad2f50.json"
-        logger.info("Loading Firebase credentials from: $serviceAccountPath")
-        val credentials = GoogleCredentials.fromStream(FileInputStream(serviceAccountPath))
+        val dotenv = dotenv {
+            ignoreIfMissing = true
+        }
+        val firebaseCredentialsJson = dotenv["FIREBASE_CREDENTIALS"]
+            ?: throw IllegalStateException("FIREBASE_CREDENTIALS environment variable not found")
+        logger.info("Loading Firebase credentials from environment variable")
+        val credentials = GoogleCredentials.fromStream(
+            ByteArrayInputStream(firebaseCredentialsJson.toByteArray())
+        )
         val options = FirebaseOptions.builder()
             .setCredentials(credentials)
             .setProjectId("nutriplan-d963a")
@@ -30,9 +35,9 @@ fun Application.module() {
 
         if (FirebaseApp.getApps().isEmpty()) {
             FirebaseApp.initializeApp(options)
-            logger.info("Firebase Admin SDK initialized successfully FROM FILE.")
+            logger.info("Firebase Admin SDK initialized successfully from environment variable")
         } else {
-            logger.info("Firebase Admin SDK already initialized.")
+            logger.info("Firebase Admin SDK already initialized")
         }
     } catch (e: Exception) {
         logger.error("Failed to initialize Firebase Admin SDK: ${e.javaClass.simpleName}: ${e.message}", e)
