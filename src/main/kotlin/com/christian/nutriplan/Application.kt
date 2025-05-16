@@ -8,6 +8,7 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import org.slf4j.LoggerFactory
 import io.github.cdimascio.dotenv.dotenv
+import kotlinx.serialization.json.Json
 import java.io.ByteArrayInputStream
 
 fun main(args: Array<String>) {
@@ -16,52 +17,31 @@ fun main(args: Array<String>) {
 
 fun Application.module() {
     val logger = LoggerFactory.getLogger("Application")
-    logger.info("Starting module configuration")
-
     try {
-        val dotenv = dotenv {
-            ignoreIfMissing = true
-        }
-        val firebaseCredentialsJson = dotenv["FIREBASE_CREDENTIALS"]
-            ?: throw IllegalStateException("FIREBASE_CREDENTIALS environment variable not found")
-        logger.info("Loading Firebase credentials from environment variable")
+        val firebaseCredentialsJson = dotenv { ignoreIfMissing = true }["FIREBASE_CREDENTIALS"]
+            ?: System.getenv("FIREBASE_CREDENTIALS")
+            ?: throw IllegalStateException("FIREBASE_CREDENTIALS not found")
+        logger.info("FIREBASE_CREDENTIALS length: ${firebaseCredentialsJson.length}")
+        Json.parseToJsonElement(firebaseCredentialsJson) // Validate JSON
         val credentials = GoogleCredentials.fromStream(
-            ByteArrayInputStream(firebaseCredentialsJson.toByteArray())
+            ByteArrayInputStream(firebaseCredentialsJson.toByteArray(Charsets.UTF_8))
         )
         val options = FirebaseOptions.builder()
             .setCredentials(credentials)
             .setProjectId("nutriplan-d963a")
             .build()
-
         if (FirebaseApp.getApps().isEmpty()) {
             FirebaseApp.initializeApp(options)
-            logger.info("Firebase Admin SDK initialized successfully from environment variable")
-        } else {
-            logger.info("Firebase Admin SDK already initialized")
+            logger.info("Firebase initialized")
         }
     } catch (e: Exception) {
-        logger.error("Failed to initialize Firebase Admin SDK: ${e.javaClass.simpleName}: ${e.message}", e)
+        logger.error("Firebase init failed: ${e.message}", e)
         throw IllegalStateException("Firebase initialization failed", e)
     }
-
-    // Configure serialization
-    logger.info("Configuring serialization")
     configureSerialization()
-
-    // Configure database
-    logger.info("Configuring database")
     val database = configureDatabase()
-
-    // Create services
-    logger.info("Creating services")
     val services = createServices(database)
-
-    // Configure HTTP, security, and routing
-    logger.info("Configuring HTTP")
     configureHTTP()
-    logger.info("Configuring security")
     configureSecurity(services.usuarioService)
-    logger.info("Configuring routing")
     configureRouting(services)
-    logger.info("Module configuration completed")
 }
