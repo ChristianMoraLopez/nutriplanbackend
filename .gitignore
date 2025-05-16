@@ -32,3 +32,5 @@ out/
 /nbdist/
 /.nb-gradle/
 
+.env
+.env
