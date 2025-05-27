@@ -7,7 +7,6 @@ import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IdTable
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.javatime.datetime
-import org.jetbrains.exposed.sql.javatime.timestamp
 import java.time.Instant
 import java.time.LocalDateTime
 
@@ -108,7 +107,8 @@ data class RecetaGuardada(
     val recetaId: Int,
     @Contextual
     val fechaGuardado: String = LocalDateTime.now().toString(),
-    val comentarioPersonal: String? = null
+    val comentarioPersonal: String? = null,
+    val nombreReceta: String? = null
 )
 
 @Serializable

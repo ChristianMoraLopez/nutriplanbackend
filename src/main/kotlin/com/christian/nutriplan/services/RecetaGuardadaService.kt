@@ -1,6 +1,7 @@
 package com.christian.nutriplan.services
 
 import com.christian.nutriplan.models.RecetaGuardada
+import com.christian.nutriplan.models.Recetas
 import com.christian.nutriplan.models.RecetasGuardadas
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -31,17 +32,21 @@ class RecetaGuardadaService(private val database: Database) {
 
     fun read(id: Int): RecetaGuardada? = transaction(database) {
         addLogger(StdOutSqlLogger)
-        RecetasGuardadas.selectAll().where { RecetasGuardadas.id eq id }.map {
-            RecetaGuardada(
-                guardadoId = it[RecetasGuardadas.id].value,
-                usuarioId = it[RecetasGuardadas.usuarioId],
-                recetaId = it[RecetasGuardadas.recetaId],
-                fechaGuardado = it[RecetasGuardadas.fechaGuardado].format(formatter),
-                comentarioPersonal = it[RecetasGuardadas.comentarioPersonal]
-            )
-        }.singleOrNull().also {
-            println("Receta guardada encontrada para id $id: ${it != null}")
-        }
+        (RecetasGuardadas innerJoin Recetas)
+            .selectAll()
+            .where { RecetasGuardadas.id eq id }
+            .map {
+                RecetaGuardada(
+                    guardadoId = it[RecetasGuardadas.id].value,
+                    usuarioId = it[RecetasGuardadas.usuarioId],
+                    recetaId = it[RecetasGuardadas.recetaId],
+                    fechaGuardado = it[RecetasGuardadas.fechaGuardado].format(formatter),
+                    comentarioPersonal = it[RecetasGuardadas.comentarioPersonal],
+                    nombreReceta = it[Recetas.nombre]
+                )
+            }.singleOrNull().also {
+                println("Receta guardada encontrada para id $id: ${it != null}")
+            }
     }
 
     fun update(id: Int, recetaGuardada: RecetaGuardada) = transaction(database) {
@@ -64,7 +69,8 @@ class RecetaGuardadaService(private val database: Database) {
 
     fun getByUsuario(usuarioId: Int): List<RecetaGuardada> = transaction(database) {
         addLogger(StdOutSqlLogger)
-        RecetasGuardadas.selectAll()
+        (RecetasGuardadas innerJoin Recetas)
+            .selectAll()
             .where { RecetasGuardadas.usuarioId eq usuarioId }
             .map {
                 RecetaGuardada(
@@ -72,7 +78,8 @@ class RecetaGuardadaService(private val database: Database) {
                     usuarioId = it[RecetasGuardadas.usuarioId],
                     recetaId = it[RecetasGuardadas.recetaId],
                     fechaGuardado = it[RecetasGuardadas.fechaGuardado].format(formatter),
-                    comentarioPersonal = it[RecetasGuardadas.comentarioPersonal]
+                    comentarioPersonal = it[RecetasGuardadas.comentarioPersonal],
+                    nombreReceta = it[Recetas.nombre]
                 )
             }.also {
                 println("Recetas guardadas encontradas para usuarioId $usuarioId: ${it.size}")
@@ -81,30 +88,36 @@ class RecetaGuardadaService(private val database: Database) {
 
     fun getAll(): List<RecetaGuardada> = transaction(database) {
         addLogger(StdOutSqlLogger)
-        RecetasGuardadas.selectAll().map {
-            RecetaGuardada(
-                guardadoId = it[RecetasGuardadas.id].value,
-                usuarioId = it[RecetasGuardadas.usuarioId],
-                recetaId = it[RecetasGuardadas.recetaId],
-                fechaGuardado = it[RecetasGuardadas.fechaGuardado].format(formatter),
-                comentarioPersonal = it[RecetasGuardadas.comentarioPersonal]
-            )
-        }.also {
-            println("Total recetas guardadas obtenidas: ${it.size}")
-        }
-    }
-
-    fun getRecetasGuardadasPaginated(page: Int, pageSize: Int): List<RecetaGuardada> = transaction(database) {
-        addLogger(StdOutSqlLogger)
-        RecetasGuardadas.selectAll()
-            .limit(pageSize).offset((page - 1) * pageSize.toLong())
+        (RecetasGuardadas innerJoin Recetas)
+            .selectAll()
             .map {
                 RecetaGuardada(
                     guardadoId = it[RecetasGuardadas.id].value,
                     usuarioId = it[RecetasGuardadas.usuarioId],
                     recetaId = it[RecetasGuardadas.recetaId],
                     fechaGuardado = it[RecetasGuardadas.fechaGuardado].format(formatter),
-                    comentarioPersonal = it[RecetasGuardadas.comentarioPersonal]
+                    comentarioPersonal = it[RecetasGuardadas.comentarioPersonal],
+                    nombreReceta = it[Recetas.nombre]
+                )
+            }.also {
+                println("Total recetas guardadas obtenidas: ${it.size}")
+            }
+    }
+
+    fun getRecetasGuardadasPaginated(page: Int, pageSize: Int): List<RecetaGuardada> = transaction(database) {
+        addLogger(StdOutSqlLogger)
+        (RecetasGuardadas innerJoin Recetas)
+            .selectAll()
+            .limit(pageSize)
+            .offset((page - 1) * pageSize.toLong())
+            .map {
+                RecetaGuardada(
+                    guardadoId = it[RecetasGuardadas.id].value,
+                    usuarioId = it[RecetasGuardadas.usuarioId],
+                    recetaId = it[RecetasGuardadas.recetaId],
+                    fechaGuardado = it[RecetasGuardadas.fechaGuardado].format(formatter),
+                    comentarioPersonal = it[RecetasGuardadas.comentarioPersonal],
+                    nombreReceta = it[Recetas.nombre]
                 )
             }.also {
                 println("Recetas guardadas obtenidas para página $page (tamaño $pageSize): ${it.size}")

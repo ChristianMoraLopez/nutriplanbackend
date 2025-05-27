@@ -479,8 +479,15 @@ fun Application.configureRouting(services: Services) {
 
                     try {
                         val id = services.recetaGuardadaService.create(recetaGuardada)
-                        val createdRecetaGuardada = services.recetaGuardadaService.read(id) ?: recetaGuardada
-                        call.respond(HttpStatusCode.Created, createdRecetaGuardada)
+                        val createdRecetaGuardada = services.recetaGuardadaService.read(id)
+                        if (createdRecetaGuardada != null) {
+                            call.respond(HttpStatusCode.Created, createdRecetaGuardada)
+                        } else {
+                            call.respond(
+                                HttpStatusCode.InternalServerError,
+                                ErrorResponse("No se pudo leer la receta guardada creada")
+                            )
+                        }
                     } catch (e: Exception) {
                         call.respond(
                             HttpStatusCode.Conflict,
@@ -517,10 +524,15 @@ fun Application.configureRouting(services: Services) {
                             }
 
                             services.recetaGuardadaService.update(id, updatedRecetaGuardada)
-                            call.respond(
-                                HttpStatusCode.OK,
-                                mapOf("message" to "Receta guardada actualizada correctamente")
-                            )
+                            val updated = services.recetaGuardadaService.read(id)
+                            if (updated != null) {
+                                call.respond(HttpStatusCode.OK, updated)
+                            } else {
+                                call.respond(
+                                    HttpStatusCode.InternalServerError,
+                                    ErrorResponse("No se pudo leer la receta guardada actualizada")
+                                )
+                            }
                         } catch (e: Exception) {
                             call.respond(
                                 HttpStatusCode.InternalServerError,
