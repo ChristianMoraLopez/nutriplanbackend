@@ -12,10 +12,13 @@ jwt:
   realm: "NutriPlan App"
 
 database:
-  url: ${DB_URL}
-  user: ${DB_USER}
-  password: ${DB_PASSWORD}
-  driver: org.postgresql.Driver
+  url: "jdbc:postgresql://sa-east-1.fbc0211e-2f90-4f2c-8cc2-c0c42461ee02.aws.yugabyte.cloud:5433/yugabyte?ssl=true&sslmode=verify-full&sslrootcert=classpath:root.crt"
+  user: "christian"
+  password: "4682Oscuridad"
+  driver: "org.postgresql.Driver"
+  connectionPool:
+    maxPoolSize: 10
+    idleTimeout: 10000
 
 
 firebase:
